@@ -408,3 +408,61 @@ Wrote output to file:
 2021-01-24,196,4
 """
     assert expected == actual
+
+
+def test_filter(tsv_output_path):
+    run_git_repo_language_trends_output_test(tsv_output_path, [
+        "--min-interval-days=0",
+        "--first-commit=v0.1.2",
+        "--filter=*.yml",
+        ".yml",
+        ".rs",
+    ], """          	.yml	.rs
+2021-01-19	0	0
+2021-01-19	0	0
+2021-01-19	0	66
+2021-01-22	0	107
+2021-01-23	0	107
+2021-01-23	0	107
+2021-01-23	0	121
+2021-01-23	0	121
+2021-01-23	0	121
+2021-01-23	0	121
+2021-01-23	0	121
+2021-01-23	0	121
+2021-01-23	0	121
+""", f"""
+Wrote output to file:
+
+    {tsv_output_path}
+
+""")
+
+
+def test_filter_dir(tsv_output_path):
+    run_git_repo_language_trends_output_test(tsv_output_path, [
+        "--min-interval-days=0",
+        "--first-commit=v0.1.2",
+        "--filter=.github/*",
+        ".yml",
+        ".rs",
+    ], """          	.yml	.rs
+2021-01-19	0	0
+2021-01-19	0	0
+2021-01-19	0	66
+2021-01-22	0	107
+2021-01-23	0	107
+2021-01-23	0	107
+2021-01-23	0	121
+2021-01-23	0	121
+2021-01-23	0	121
+2021-01-23	0	121
+2021-01-23	0	121
+2021-01-23	0	121
+2021-01-23	0	121
+""", f"""
+Wrote output to file:
+
+    {tsv_output_path}
+
+""")

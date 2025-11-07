@@ -186,6 +186,14 @@ def get_args():
         commit parents, but with the risk of producing inconsistent/jumpy graphs""",
     )
 
+    advanced_group.add_argument(
+        "--filter",
+        metavar="<glob>",
+        action="append",
+        help="""[ADVANCED] exclude files from the analysis, using glob patterns.
+        Can be specified multiple times""",
+    )
+
     args = parser.parse_args()
 
     # pre-parse width and height

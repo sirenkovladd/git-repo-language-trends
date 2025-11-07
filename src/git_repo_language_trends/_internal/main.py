@@ -7,6 +7,7 @@ import sys
 from datetime import datetime
 import os
 import os.path
+import fnmatch
 import pygit2
 
 from .args import get_args
@@ -90,6 +91,7 @@ def process_commits(args, outputs):
             ext_to_column,
             blob_to_lines_cache,
             progress_state,
+            args,
         )
 
         for output in outputs:
@@ -110,7 +112,7 @@ def process_commits(args, outputs):
 def get_data_for_first_commit(args):
     repo = get_repo()
     rev = repo.revparse_single(args.first_commit)
-    return process_commit(rev.peel(pygit2.Commit), None, None, Progress(args, 1))
+    return process_commit(rev.peel(pygit2.Commit), None, None, Progress(args, 1), args)
 
 
 def get_commits_to_process(args):
@@ -147,12 +149,12 @@ def get_commits_to_process(args):
     return commits_to_process
 
 
-def process_commit(commit, ext_to_column, blob_to_lines_cache, progress_state):
+def process_commit(commit, ext_to_column, blob_to_lines_cache, progress_state, args):
     """
     Counts lines for files with the given file extensions in a given commit.
     """
 
-    blobs = get_blobs_in_commit(commit)
+    blobs = get_blobs_in_commit(commit, args)
 
     column_to_lines = {}
     len_blobs = len(blobs)
@@ -181,24 +183,30 @@ def process_commit(commit, ext_to_column, blob_to_lines_cache, progress_state):
     return column_to_lines
 
 
-def get_all_blobs_in_tree(tree):
+def get_all_blobs_in_tree(repo: pygit2.Repository, tree):
     blobs = []
-    trees_left = [tree]
-    # Say no to recursion
-    while len(trees_left) > 0:
-        tree = trees_left.pop()
-        for obj in tree:
+    trees_to_visit = [(tree, "")]
+    while trees_to_visit:
+        current_tree, current_path = trees_to_visit.pop()
+        for entry in current_tree:
+            path = os.path.join(current_path, entry.name) if current_path else entry.name
+            obj = repo[entry.id]
             if isinstance(obj, pygit2.Tree):
-                trees_left.append(obj)
+                trees_to_visit.append((obj, path))
             elif isinstance(obj, pygit2.Blob):
-                blobs.append(obj)
+                blobs.append((obj, path))
     return blobs
 
 
-def get_blobs_in_commit(commit):
-    blobs = []
-    for obj in get_all_blobs_in_tree(commit.tree):
-        ext = os.path.splitext(obj.name)[1]
+def get_blobs_in_commit(commit: pygit2.Commit, args):
+    repo = get_repo()
+    blobs: list[tuple[pygit2.Blob, str]] = []
+    for obj, path in get_all_blobs_in_tree(repo, commit.tree):
+        if args.filter:
+            if any(fnmatch.fnmatch(path, p) for p in args.filter):
+                continue
+
+        ext = os.path.splitext(path)[1]
         if ext:
             blobs.append((obj, ext))
 
