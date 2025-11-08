@@ -183,25 +183,24 @@ def process_commit(commit, ext_to_column, blob_to_lines_cache, progress_state, a
     return column_to_lines
 
 
-def get_all_blobs_in_tree(repo: pygit2.Repository, tree):
+def get_all_blobs_in_tree(tree: pygit2.Tree):
     blobs = []
-    trees_to_visit = [(tree, "")]
-    while trees_to_visit:
-        current_tree, current_path = trees_to_visit.pop()
-        for entry in current_tree:
-            path = os.path.join(current_path, entry.name) if current_path else entry.name
-            obj = repo[entry.id]
+    trees_left = [(tree, "")]
+    # Say no to recursion
+    while len(trees_left) > 0:
+        tree, current_path = trees_left.pop()
+        for obj in tree:
+            path = os.path.join(current_path, obj.name) if current_path else obj.name
             if isinstance(obj, pygit2.Tree):
-                trees_to_visit.append((obj, path))
+                trees_left.append((obj, path))
             elif isinstance(obj, pygit2.Blob):
                 blobs.append((obj, path))
     return blobs
 
 
 def get_blobs_in_commit(commit: pygit2.Commit, args):
-    repo = get_repo()
     blobs: list[tuple[pygit2.Blob, str]] = []
-    for obj, path in get_all_blobs_in_tree(repo, commit.tree):
+    for obj, path in get_all_blobs_in_tree(commit.tree):
         if args.filter:
             if any(fnmatch.fnmatch(path, p) for p in args.filter):
                 continue
